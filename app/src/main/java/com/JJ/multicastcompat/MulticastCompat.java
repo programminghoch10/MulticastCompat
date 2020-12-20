@@ -19,7 +19,7 @@ public class MulticastCompat {
 	private DiscoveryListener relayDiscoveryListener;
 	private ResolveListener relayResolveListener;
 	
-	MulticastCompat(Context context) {
+	public MulticastCompat(Context context) {
 		this.nsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
 		setupDiscoveryProxy();
 		setupResolveProxy();
