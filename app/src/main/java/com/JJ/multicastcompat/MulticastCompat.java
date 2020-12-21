@@ -3,7 +3,6 @@ package com.JJ.multicastcompat;
 import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
-import android.util.Log;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -14,32 +13,59 @@ public class MulticastCompat {
 	
 	private static final String TAG = MulticastCompat.class.getSimpleName();
 	private final NsdManager nsdManager;
-	private LinkedHashMap<InetAddress, NsdServiceInfo> map = new LinkedHashMap<>();
+	public boolean notifyOnUpdate = false;
+	private LinkedHashMap<InetAddress, MulticastServiceInfo> map = new LinkedHashMap<>();
 	private NsdManager.DiscoveryListener discoveryListener;
 	private NsdManager.ResolveListener resolveListener;
 	private DiscoveryListener relayDiscoveryListener;
 	private MulticastSocket multicastSocket;
 	
+	/**
+	 * This creates a new MulticastCompat object.
+	 * An Thread for receiving messages will be opened for future use through discoverServices()
+	 *
+	 * @param context The context is needed to acquire the NsdManager system service
+	 */
 	public MulticastCompat(Context context) {
 		this.nsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
-		setupDiscoveryProxy();
-		setupResolveProxy();
+		setupNsdManagerProxy();
 		multicastSocket = new MulticastSocket(context, new MulticastSocket.MulticastListener() {
 			@Override
 			public void onServiceFound(MulticastServiceInfo serviceInfo) {
-				relayDiscoveryListener.onServiceResolved(serviceInfo);
+				checkOnServiceFound(serviceInfo);
 			}
 		});
 		multicastSocket.start();
 	}
 	
-	private void setupDiscoveryProxy() {
+	/**
+	 * This checks and updates the service tracking array.
+	 *
+	 * @param serviceInfo the found service
+	 */
+	public void checkOnServiceFound(MulticastServiceInfo serviceInfo) {
+		if (serviceInfo == null) return;
+		if (serviceInfo.host == null) return;
+		if (map.containsKey(serviceInfo.host)) {
+			map.put(serviceInfo.host, MulticastServiceInfo.merge(map.get(serviceInfo.host), serviceInfo));
+			if (notifyOnUpdate) relayDiscoveryListener.onServiceFound(serviceInfo);
+		} else {
+			map.put(serviceInfo.host, serviceInfo);
+			relayDiscoveryListener.onServiceFound(serviceInfo);
+		}
+	}
+	
+	/**
+	 * This configures the NsdManager Proxy for recieving and handling events.
+	 */
+	private void setupNsdManagerProxy() {
 		discoveryListener = new NsdManager.DiscoveryListener() {
 			@Override
 			public void onStartDiscoveryFailed(String s, int i) {
 				if (i == NsdManager.FAILURE_INTERNAL_ERROR) {
 					//probably an issue with mDNS daemon
 					// we can try with multicast socket anyways
+					//TODO: only escalte internal error when both ways failed
 				}
 				relayDiscoveryListener.onStartDiscoveryFailed(s, i);
 			}
@@ -61,9 +87,8 @@ public class MulticastCompat {
 			
 			@Override
 			public void onServiceFound(NsdServiceInfo nsdServiceInfo) {
-				map.put(nsdServiceInfo.getHost(), nsdServiceInfo);
+				checkOnServiceFound(new MulticastServiceInfo(nsdServiceInfo));
 				resolveService(nsdServiceInfo);
-				relayDiscoveryListener.onServiceFound(new MulticastServiceInfo(nsdServiceInfo));
 			}
 			
 			@Override
@@ -72,9 +97,6 @@ public class MulticastCompat {
 				relayDiscoveryListener.onServiceLost(new MulticastServiceInfo(nsdServiceInfo));
 			}
 		};
-	}
-	
-	private void setupResolveProxy() {
 		resolveListener = new NsdManager.ResolveListener() {
 			@Override
 			public void onResolveFailed(NsdServiceInfo nsdServiceInfo, int i) {
@@ -83,8 +105,7 @@ public class MulticastCompat {
 			
 			@Override
 			public void onServiceResolved(NsdServiceInfo nsdServiceInfo) {
-				map.put(nsdServiceInfo.getHost(), nsdServiceInfo);
-				relayDiscoveryListener.onServiceResolved(new MulticastServiceInfo(nsdServiceInfo));
+				checkOnServiceFound(new MulticastServiceInfo(nsdServiceInfo));
 			}
 		};
 	}
@@ -113,7 +134,7 @@ public class MulticastCompat {
 		nsdManager.resolveService(serviceInfo, resolveListener);
 	}
 	
-	public LinkedHashMap<InetAddress, NsdServiceInfo> getDiscoveredServices() {
+	public LinkedHashMap<InetAddress, MulticastServiceInfo> getDiscoveredServices() {
 		return this.map;
 	}
 	

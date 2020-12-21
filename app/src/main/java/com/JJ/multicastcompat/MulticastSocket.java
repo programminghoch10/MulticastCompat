@@ -1,23 +1,17 @@
 package com.JJ.multicastcompat;
 
 import android.content.Context;
-import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
-import com.cafbit.netlib.Packet;
 import com.cafbit.netlib.NetUtil;
-import com.cafbit.netlib.dns.DNSAnswer;
-import com.cafbit.netlib.dns.DNSComponent;
+import com.cafbit.netlib.Packet;
 import com.cafbit.netlib.dns.DNSMessage;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.Set;
 
 class MulticastSocket extends Thread {
@@ -44,10 +38,6 @@ class MulticastSocket extends Thread {
 	
 	public void setListener(MulticastListener listener) {
 		this.multicastListener = listener;
-	}
-	
-	public interface MulticastListener {
-		void onServiceFound(MulticastServiceInfo serviceInfo);
 	}
 	
 	@Override
@@ -144,7 +134,7 @@ class MulticastSocket extends Thread {
 			packet.description = message.toString().trim();
 			Log.d(TAG, "run: packet message is \"" + packet.description + "\"");
 			//TODO: parse packet here
-			MulticastServiceInfo serviceInfo = new MulticastServiceInfo(message.getHost(),message.getType(),packet.src,packet.srcPort);
+			MulticastServiceInfo serviceInfo = new MulticastServiceInfo(message.getHost(), message.getType(), packet.src, packet.srcPort);
 			serviceInfo.setAttributes(message.getAttributes());
 			multicastListener.onServiceFound(serviceInfo);
 			
@@ -187,10 +177,15 @@ class MulticastSocket extends Thread {
 		return System.currentTimeMillis() / 1000;
 	}
 	
+	String getQueryHostname() {
+		return this.queryHostname;
+	}
+	
 	void setQueryHostname(String hostname) {
 		this.queryHostname = hostname;
 	}
-	String getQueryHostname() {
-		return this.queryHostname;
+	
+	public interface MulticastListener {
+		void onServiceFound(MulticastServiceInfo serviceInfo);
 	}
 }
