@@ -73,17 +73,13 @@ class MulticastSocket extends Thread {
 		
 		long lastquery = 0;
 		
+		Log.d(TAG, "run: now accepting multicast responses");
+		
 		while (!this.stop) {
 			// zero the incoming buffer for good measure.
 			java.util.Arrays.fill(responseBuffer, (byte) 0); // clear buffer
 			
-			// receive a packet (or process an incoming command)
-			try {
-				multicastSocket.receive(response);
-			} catch (IOException e) {
-				Log.e(TAG, "run: recieve error", e);
-			}
-			// check if re-query is nessecary
+			// check if re-query is necessary
 			if (lastquery + REQUERY_TIMEOUT < getUTC()) {
 				
 				// reopen the socket
@@ -101,14 +97,20 @@ class MulticastSocket extends Thread {
 				} catch (IOException e2) {
 					//TODO: handle exception
 					Log.e(TAG, "run: Could not query hostname", e2);
-					//e.printStackTrace();
 				}
 				
 				lastquery = getUTC();
 				
 				continue;
 			}
-
+			
+			// receive a packet (or process an incoming command)
+			try {
+				multicastSocket.receive(response);
+			} catch (IOException e) {
+				Log.e(TAG, "run: recieve error", e);
+			}
+			
             /*
             Log.v(TAG, String.format("received: offset=0x%04X (%d) length=0x%04X (%d)", response.getOffset(), response.getOffset(), response.getLength(), response.getLength()));
             Log.v(TAG, Util.hexDump(response.getData(), response.getOffset(), response.getLength()));

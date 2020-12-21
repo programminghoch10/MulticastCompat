@@ -39,7 +39,7 @@ public class MulticastCompat {
 	}
 	
 	/**
-	 * This checks and updates the service tracking array.
+	 * This checks and updates the service tracking list.
 	 *
 	 * @param serviceInfo the found service
 	 */
@@ -48,7 +48,7 @@ public class MulticastCompat {
 		if (serviceInfo.host == null) return;
 		if (map.containsKey(serviceInfo.host)) {
 			map.put(serviceInfo.host, MulticastServiceInfo.merge(map.get(serviceInfo.host), serviceInfo));
-			if (notifyOnUpdate) relayDiscoveryListener.onServiceFound(serviceInfo);
+			if (notifyOnUpdate) relayDiscoveryListener.onServiceFound(map.get(serviceInfo.host));
 		} else {
 			map.put(serviceInfo.host, serviceInfo);
 			relayDiscoveryListener.onServiceFound(serviceInfo);
@@ -89,6 +89,7 @@ public class MulticastCompat {
 			public void onServiceFound(NsdServiceInfo nsdServiceInfo) {
 				checkOnServiceFound(new MulticastServiceInfo(nsdServiceInfo));
 				resolveService(nsdServiceInfo);
+				relayDiscoveryListener.onServiceFound(new MulticastServiceInfo(nsdServiceInfo));
 			}
 			
 			@Override
@@ -148,8 +149,6 @@ public class MulticastCompat {
 		void onDiscoveryStopped(String serviceType);
 		
 		void onResolveFailed(MulticastServiceInfo serviceInfo, int errorcode);
-		
-		void onServiceResolved(MulticastServiceInfo serviceInfo);
 		
 		void onServiceFound(MulticastServiceInfo serviceInfo);
 		
