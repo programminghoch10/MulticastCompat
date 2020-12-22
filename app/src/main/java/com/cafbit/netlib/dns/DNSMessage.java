@@ -185,8 +185,10 @@ public class DNSMessage {
 		if (ptr == null) return null;
 		ptr = ptr.replace(".local", ".");
 		int l = ptr.lastIndexOf("._");
-		l = ptr.lastIndexOf("._", l - 1);
-		return ptr.substring(0, l);
+		if (l == -1) return ptr;
+		int l2 = ptr.lastIndexOf("._", l - 1);
+		if (l2 == -1) return ptr.substring(0, l);
+		return ptr.substring(0, l2);
 	}
 	
 	public LinkedList<DNSAnswer> getAnswers() {
