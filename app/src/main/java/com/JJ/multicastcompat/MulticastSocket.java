@@ -134,7 +134,7 @@ class MulticastSocket extends Thread {
 			// send the packet to the UI
 			Packet packet = new Packet(response, multicastSocket);
 			packet.description = message.toString().trim();
-			Log.d(TAG, "run: packet message is \"" + packet.description + "\"");
+			//Log.d(TAG, "run: packet message is \"" + packet.description + "\"");
 			//TODO: parse packet here
 			MulticastServiceInfo serviceInfo = new MulticastServiceInfo(message.getHost(), message.getType(), packet.src, packet.srcPort);
 			serviceInfo.setAttributes(message.getAttributes());

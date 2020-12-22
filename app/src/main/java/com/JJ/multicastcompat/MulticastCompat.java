@@ -20,6 +20,9 @@ public class MulticastCompat {
 	private DiscoveryListener relayDiscoveryListener;
 	private MulticastSocket multicastSocket;
 	
+	private boolean enableNsd = true;
+	private boolean enableSocket = true;
+	
 	/**
 	 * This creates a new MulticastCompat object.
 	 * An Thread for receiving messages will be opened for future use through discoverServices()
@@ -36,6 +39,28 @@ public class MulticastCompat {
 			}
 		});
 		multicastSocket.start();
+	}
+	
+	public MulticastCompat(Context context, boolean enableNsd, boolean enableSocket) {
+		if (enableNsd) {
+			this.nsdManager = (NsdManager) context.getSystemService(Context.NSD_SERVICE);
+			setupNsdManagerProxy();
+		} else {
+			this.nsdManager = null;
+			this.enableNsd = false;
+		}
+		if (enableSocket) {
+			multicastSocket = new MulticastSocket(context, new MulticastSocket.MulticastListener() {
+				@Override
+				public void onServiceFound(MulticastServiceInfo serviceInfo) {
+					checkOnServiceFound(serviceInfo);
+				}
+			});
+			multicastSocket.start();
+		} else {
+			this.enableSocket = false;
+		}
+		if (!enableNsd && !enableSocket) throw new IllegalStateException("all multicast methods disabled");
 	}
 	
 	/**
@@ -117,12 +142,16 @@ public class MulticastCompat {
 	
 	public void discoverServices(String serviceType) {
 		if (relayDiscoveryListener == null) throw new NullPointerException();
-		nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, this.discoveryListener);
-		try {
-			multicastSocket.discoverServices(serviceType);
-		} catch (IOException e) {
-			//TODO: only escalate internal error when both failed
-			relayDiscoveryListener.onStartDiscoveryFailed(serviceType, NsdManager.FAILURE_INTERNAL_ERROR);
+		if (this.enableNsd) {
+			nsdManager.discoverServices(serviceType, NsdManager.PROTOCOL_DNS_SD, this.discoveryListener);
+		}
+		if (this.enableSocket) {
+			try {
+				multicastSocket.discoverServices(serviceType);
+			} catch (IOException e) {
+				//TODO: only escalate internal error when both failed
+				relayDiscoveryListener.onStartDiscoveryFailed(serviceType, NsdManager.FAILURE_INTERNAL_ERROR);
+			}
 		}
 	}
 	
@@ -132,7 +161,17 @@ public class MulticastCompat {
 	
 	public void resolveService(NsdServiceInfo serviceInfo) {
 		if (relayDiscoveryListener == null) throw new NullPointerException();
-		nsdManager.resolveService(serviceInfo, resolveListener);
+		nsdManager.resolveService(serviceInfo, new NsdManager.ResolveListener() {
+			@Override
+			public void onResolveFailed(NsdServiceInfo nsdServiceInfo, int i) {
+				resolveListener.onResolveFailed(nsdServiceInfo, i);
+			}
+			
+			@Override
+			public void onServiceResolved(NsdServiceInfo nsdServiceInfo) {
+				resolveListener.onServiceResolved(nsdServiceInfo);
+			}
+		});
 	}
 	
 	public LinkedHashMap<InetAddress, MulticastServiceInfo> getDiscoveredServices() {
